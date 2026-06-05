@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'><text%20y='.9em'%20font-size='90'>⚡</text></svg>" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Tap Faster</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html,body { height:100%; }
+  body { font-family:"Arial Black",system-ui,sans-serif; color:#fff; background:radial-gradient(circle at 50% 25%,#2a1150,#0a0716);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:manipulation; }
+  #stage { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  h1 { position:absolute; top:40px; font-size:32px; text-shadow:0 0 20px #16f2c8; }
+  #timer { position:absolute; top:140px; font-size:28px; color:#ff3df0; font-weight:900; min-width:100px; text-align:center; }
+  #taps { position:absolute; top:200px; font-size:60px; line-height:1; color:#16f2c8; text-shadow:0 0 20px #16f2c8; }
+  #msg { position:absolute; top:280px; font-size:16px; color:#c8b8ff; min-height:24px; text-align:center; }
+  #btn { position:absolute; width:80px; height:80px; border-radius:100%; border:none; cursor:pointer; font-weight:900; font-size:24px;
+    color:#0a0716; background:linear-gradient(135deg,#16f2c8,#ff3df0); transition:box-shadow .05s, transform .05s;
+    box-shadow:0 0 40px currentColor; }
+  #btn:active { transform:scale(0.95); }
+  .result { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;
+    text-align:center; font-size:48px; font-weight:900; line-height:1; }
+  .sharebtn { margin-top:20px; font-family:inherit; font-weight:900; font-size:16px; padding:14px 24px;
+    border:none; border-radius:12px; color:#0a0716; background:#16f2c8; cursor:pointer; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <h1>⚡ TAP FASTER</h1>
+    <div id="timer">0.0s</div>
+    <div id="taps">0</div>
+    <div id="msg">Get ready…</div>
+    <button id="btn">TAP!</button>
+  </div>
+<script>
+(() => {
+  const stage=document.getElementById('stage'), btn=document.getElementById('btn'),
+        timerEl=document.getElementById('timer'), tapsEl=document.getElementById('taps'),
+        msgEl=document.getElementById('msg');
+  let state='idle', taps=0, timeLeft=3000, lastTap=0, best=+(localStorage.tfBest||0), raf=0, actx=null;
+  const _qs=new URLSearchParams(location.search);
+  function _gameURL(p){ return location.origin+location.pathname+(p?('?'+p):''); }
+  const _rawT=_qs.get('target'); const _chT=(_rawT&&/^\d+$/.test(_rawT))?+_rawT:0;
+  async function shareCard(title,bigTxt,sub2,text){
+    try{
+      const c=document.createElement('canvas'); c.width=c.height=1080; const x=c.getContext('2d');
+      const g=x.createLinearGradient(0,0,1080,1080); g.addColorStop(0,'#1a0f3d'); g.addColorStop(1,'#070510'); x.fillStyle=g; x.fillRect(0,0,1080,1080);
+      x.fillStyle='rgba(22,242,200,.10)'; x.beginPath(); x.arc(540,430,380,0,7); x.fill(); x.textAlign='center';
+      x.fillStyle='#fff'; x.font='bold 66px Arial'; x.fillText(title,540,250);
+      x.fillStyle='#16f2c8'; x.font='bold 210px Arial'; x.fillText(bigTxt,540,610);
+      x.fillStyle='#ff3df0'; x.font='bold 54px Arial'; x.fillText(sub2,540,740);
+      x.fillStyle='#c9b8ff'; x.font='bold 44px Arial'; x.fillText('VIBE ARCADE',540,960);
+      x.fillStyle='#8a7fb0'; x.font='30px Arial'; x.fillText('64johnlee.github.io/vibe-arcade',540,1012);
+      const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+      if(!blob) throw new Error('canvas export failed');
+      const file=new File([blob],'vibe-arcade.png',{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text}); return; }
+      const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download='vibe-arcade.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),3000);
+      try{ await navigator.clipboard.writeText(text); }catch(_){}
+    }catch(_){ try{ await navigator.clipboard.writeText(text); }catch(__){} }
+  }
+  function rankFor(t){
+    if(t>=80) return ["🏎️","UNTOUCHABLE","alien reflexes"];
+    if(t>=60) return ["⚡","LIGHTNING","superhuman"];
+    if(t>=40) return ["🔥","QUICK","very fast"];
+    if(t>=20) return ["👍","DECENT","respectable"];
+    if(t>=10) return ["🙂","OKAY","not bad"];
+    return ["😴","SLOW","coffee break"];
+  }
+  function tone(){ if(!actx) return;
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.frequency.value=880; o.type='sine'; g.gain.value=.15; o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime+.05);
+  }
+  function moveBtn(){
+    const x=Math.random()*(window.innerWidth-100);
+    const y=Math.random()*(window.innerHeight-100);
+    btn.style.left=x+'px'; btn.style.top=y+'px';
+  }
+  function start(){
+    state='playing'; taps=0; timeLeft=3000; lastTap=performance.now();
+    msgEl.textContent='JUST START TAPPING!'; tapsEl.textContent='0';
+    if(_chT) msgEl.textContent='🎯 Get '+_chT+' taps!';
+    moveBtn(); tick();
+  }
+  function tick(){
+    const now=performance.now();
+    timeLeft=Math.max(0, 3000-(now-lastTap));
+    timerEl.textContent=(timeLeft/1000).toFixed(1)+'s';
+    if(timeLeft<=0) return finish();
+    raf=requestAnimationFrame(tick);
+  }
+  function onTap(){
+    if(state!=='playing') return;
+    taps++; tapsEl.textContent=taps; lastTap=performance.now(); moveBtn(); tone();
+    stage.style.background='rgba(22,242,200,.1)'; setTimeout(()=>{ stage.style.background=''; }, 40);
+  }
+  function finish(){
+    cancelAnimationFrame(raf); state='done'; btn.textContent=''; btn.style.visibility='hidden';
+    const tps=taps; const isBest=tps>best; if(isBest){ best=tps; localStorage.tfBest=best; }
+    const [emoji,rank,line]=rankFor(tps);
+    const beatLine = _chT ? (tps>=_chT ? ' · 🎯 BEATEN!' : ' · 🎯 -'+(Math.max(0,_chT-tps))) : '';
+    timerEl.textContent='DONE';
+    msgEl.innerHTML=`${emoji} ${rank}${beatLine}<br>Taps: ${tps}${isBest?' · 🏆 NEW BEST':' · best '+best}<br><button class="sharebtn" id="sh" aria-label="Share tap score">📲 Share</button>`;
+    document.getElementById('sh').onclick=(e)=>{ e.target.textContent='…';
+      shareCard('TAP FASTER', String(tps), rank, `I tapped ${tps} times in 3s ⚡ on Tap Faster — beat me 👉 ${_gameURL('target='+tps)}`)
+        .then(()=>{ e.target.textContent='Shared 📸'; }); };
+  }
+  btn.addEventListener('pointerdown',(e)=>{
+    if(state==='idle'){ e.preventDefault(); return start(); }
+    if(state==='playing'){ e.preventDefault(); return onTap(); }
+  });
+  btn.addEventListener('touchstart',(e)=>{ e.preventDefault(); });
+  msgEl.textContent=best?`Best: ${best} taps`:'Tap to start';
+})();
+</script>
+</body>
+</html>

@@ -19,6 +19,8 @@
     color:#0a0716; background:linear-gradient(135deg,#16f2c8,#ff3df0); transition:box-shadow .05s, transform .05s;
     box-shadow:0 0 40px currentColor; }
   #btn:active { transform:scale(0.95); }
+  @keyframes urgency { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  #timer.urgent { color:#ff3d6c!important; animation:urgency .35s ease-in-out infinite; }
   .result { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;
     text-align:center; font-size:48px; font-weight:900; line-height:1; }
   .sharebtn { margin-top:20px; font-family:inherit; font-weight:900; font-size:16px; padding:14px 24px;
@@ -74,12 +76,14 @@
     o.start(); o.stop(actx.currentTime+.05);
   }
   function moveBtn(){
-    const x=Math.random()*(window.innerWidth-100);
-    const y=Math.random()*(window.innerHeight-100);
+    const pad=90, top=220;
+    const x=pad+Math.random()*(window.innerWidth-2*pad-80);
+    const y=top+Math.random()*(window.innerHeight-top-pad-80);
     btn.style.left=x+'px'; btn.style.top=y+'px';
   }
   function start(){
     state='playing'; taps=0; timeLeft=3000; lastTap=performance.now();
+    tapsEl.style.cssText=''; timerEl.classList.remove('urgent');
     msgEl.textContent='JUST START TAPPING!'; tapsEl.textContent='0';
     if(_chT) msgEl.textContent='🎯 Get '+_chT+' taps!';
     moveBtn(); tick();
@@ -88,6 +92,8 @@
     const now=performance.now();
     timeLeft=Math.max(0, 3000-(now-lastTap));
     timerEl.textContent=(timeLeft/1000).toFixed(1)+'s';
+    if(timeLeft<1000) timerEl.classList.add('urgent');
+    else timerEl.classList.remove('urgent');
     if(timeLeft<=0) return finish();
     raf=requestAnimationFrame(tick);
   }
@@ -100,9 +106,11 @@
     cancelAnimationFrame(raf); state='done'; btn.textContent=''; btn.style.visibility='hidden';
     const tps=taps; const isBest=tps>best; if(isBest){ best=tps; localStorage.tfBest=best; }
     const [emoji,rank,line]=rankFor(tps);
+    const col=tps>=80?'#16f2c8':tps>=60?'#ffe15d':tps>=40?'#ff9d3d':tps>=20?'#b14bff':'#ff5d6c';
     const beatLine = _chT ? (tps>=_chT ? ' · 🎯 BEATEN!' : ' · 🎯 -'+(Math.max(0,_chT-tps))) : '';
-    timerEl.textContent='DONE';
-    msgEl.innerHTML=`${emoji} ${rank}${beatLine}<br>Taps: ${tps}${isBest?' · 🏆 NEW BEST':' · best '+best}<br><button class="sharebtn" id="sh" aria-label="Share tap score">📲 Share</button>`;
+    timerEl.textContent=''; timerEl.classList.remove('urgent');
+    tapsEl.style.cssText='font-size:80px;color:'+col+';text-shadow:0 0 40px '+col+'80';
+    msgEl.innerHTML=`<span style="display:inline-block;padding:4px 18px;border-radius:50px;background:${col};color:#0a0716;font-size:20px;font-weight:900">${emoji} ${rank}</span>${beatLine}<br><span style="font-size:13px;color:#c8b8ff">${(tps/3).toFixed(1)}/sec${isBest?' · 🏆 NEW BEST':' · best '+best}</span><br><br><button class="sharebtn" id="sh" aria-label="Share tap score">📲 Share</button>`;
     document.getElementById('sh').onclick=(e)=>{ e.target.textContent='…';
       shareCard('TAP FASTER', String(tps), rank, `I tapped ${tps} times in 3s ⚡ on Tap Faster — beat me 👉 ${_gameURL('target='+tps)}`)
         .then(()=>{ e.target.textContent='Shared 📸'; }); };

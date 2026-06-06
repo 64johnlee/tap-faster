@@ -15,12 +15,15 @@
   #timer { position:absolute; top:140px; font-size:28px; color:#ff3df0; font-weight:900; min-width:100px; text-align:center; }
   #taps { position:absolute; top:200px; font-size:60px; line-height:1; color:#16f2c8; text-shadow:0 0 20px #16f2c8; }
   #msg { position:absolute; top:280px; font-size:16px; color:#c8b8ff; min-height:24px; text-align:center; }
+  @keyframes btnpulse { 0%,100%{box-shadow:0 0 30px #16f2c8,0 0 60px rgba(22,242,200,.3)} 50%{box-shadow:0 0 50px #ff3df0,0 0 80px rgba(255,61,240,.35)} }
   #btn { position:absolute; width:80px; height:80px; border-radius:100%; border:none; cursor:pointer; font-weight:900; font-size:24px;
-    color:#0a0716; background:linear-gradient(135deg,#16f2c8,#ff3df0); transition:box-shadow .05s, transform .05s;
-    box-shadow:0 0 40px currentColor; }
+    color:#0a0716; background:linear-gradient(135deg,#16f2c8,#ff3df0); transition:transform .05s;
+    animation:btnpulse 2s ease-in-out infinite; }
   #btn:active { transform:scale(0.95); }
   @keyframes urgency { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
   #timer.urgent { color:#ff3d6c!important; animation:urgency .35s ease-in-out infinite; }
+  @keyframes countpop { 0%{transform:scale(1)} 40%{transform:scale(1.22)} 100%{transform:scale(1)} }
+  .pop { animation:countpop .14s ease-out; }
   .result { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;
     text-align:center; font-size:48px; font-weight:900; line-height:1; }
   .sharebtn { margin-top:20px; font-family:inherit; font-weight:900; font-size:16px; padding:14px 24px;
@@ -100,6 +103,7 @@
   function onTap(){
     if(state!=='playing') return;
     taps++; tapsEl.textContent=taps; lastTap=performance.now(); moveBtn(); tone();
+    tapsEl.classList.remove('pop'); void tapsEl.offsetWidth; tapsEl.classList.add('pop');
     stage.style.background='rgba(22,242,200,.1)'; setTimeout(()=>{ stage.style.background=''; }, 40);
   }
   function finish(){

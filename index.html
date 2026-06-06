@@ -108,8 +108,8 @@
     const [emoji,rank,line]=rankFor(tps);
     const col=tps>=80?'#16f2c8':tps>=60?'#ffe15d':tps>=40?'#ff9d3d':tps>=20?'#b14bff':'#ff5d6c';
     const beatLine = _chT ? (tps>=_chT ? ' · 🎯 BEATEN!' : ' · 🎯 -'+(Math.max(0,_chT-tps))) : '';
-    timerEl.textContent=''; timerEl.classList.remove('urgent');
-    tapsEl.style.cssText='font-size:80px;color:'+col+';text-shadow:0 0 40px '+col+'80';
+    timerEl.textContent='DONE'; timerEl.classList.remove('urgent');
+    tapsEl.style.cssText='font-size:76px;color:'+col+';text-shadow:0 0 40px '+col+'80';
     msgEl.innerHTML=`<span style="display:inline-block;padding:4px 18px;border-radius:50px;background:${col};color:#0a0716;font-size:20px;font-weight:900">${emoji} ${rank}</span>${beatLine}<br><span style="font-size:13px;color:#c8b8ff">${(tps/3).toFixed(1)}/sec${isBest?' · 🏆 NEW BEST':' · best '+best}</span><br><br><button class="sharebtn" id="sh" aria-label="Share tap score">📲 Share</button>`;
     document.getElementById('sh').onclick=(e)=>{ e.target.textContent='…';
       shareCard('TAP FASTER', String(tps), rank, `I tapped ${tps} times in 3s ⚡ on Tap Faster — beat me 👉 ${_gameURL('target='+tps)}`)
